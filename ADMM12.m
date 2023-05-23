@@ -1,4 +1,5 @@
 function [x, output] = ADMM12(A, b, pm)
+
 %%    u = min_{x} ||x||_1 - ||x||_2
 %%    s.t. ||Ax - b||_2 <= sigma
 [M,N]       = size(A);
@@ -57,24 +58,26 @@ else
     end
 end
 
-% auxiliary functions
-function x = prox(y,lambda,alpha)
-    % min_x .5||x-y||^2 + lambda( |x|_1- alpha |x|_2 )
-x = zeros(size(y));
+% The proximal operator of ell1 - alpha * ell2
+% Reference: Lou Y, Yan M (2018) Fast L1 − L2 minimization via a proximal operator.
+%            Journal of Scientific Computing 74(2):767–785
+    function x = prox(y,lambda,alpha)
+        % min_x .5||x-y||^2 + lambda( ||x||_1- alpha ||x||_2 )
+        x = zeros(size(y));
 
-if max(abs(y)) > 0
-    if max(abs(y)) > lambda
-        x   = max(abs(y) - lambda, 0).*sign(y);
-        x   = x * (norm(x,2) + alpha * lambda)/norm(x,2);
-    else
-        if max(abs(y))>=(1-alpha)*lambda
-            [~, i]  = max(abs(y));
-            x(i(1)) = (y(i(1)) + (alpha - 1) * lambda) * sign(y(i(1)));
+        if max(abs(y)) > 0
+            if max(abs(y)) > lambda
+                x   = max(abs(y) - lambda, 0).*sign(y);
+                x   = x * (norm(x,2) + alpha * lambda)/norm(x,2);
+            else
+                if max(abs(y))>=(1-alpha)*lambda
+                    [~, i]  = max(abs(y));
+                    x(i(1)) = (y(i(1)) + (alpha - 1) * lambda) * sign(y(i(1)));
+                end
+            end
         end
-    end
-end
 
-end
+    end
 
 proj = @(u) u .* min(sigma/norm(u,2), 1);
 objective = @(u) norm(u, 1) - norm(u, 2);
@@ -98,7 +101,7 @@ AtA_plus_I_inv = (1/tau)*(speye(N) - lambda * (A'*(I_plus_lamAAT\A)));
 for it =1: maxit
     %update x
     rhs = lambda*(A'*(y+b)) + A'*p1 + tau*z + p2;
-%     x   = U\(L\rhs);
+    %     x   = U\(L\rhs);
     x = AtA_plus_I_inv * rhs;
 
     %update y
@@ -119,10 +122,10 @@ for it =1: maxit
     output.time(it)      = toc(start_time);
     output.constraint(it)= constraint(x);
     output.xoutput(:,it) = x;
-    
-   if relerr < reltol && it > 2
+
+    if relerr < reltol && it > 2
         break;
-   end
+    end
     xold = x;
 end
 end
